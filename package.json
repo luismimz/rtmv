@@ -1,0 +1,22 @@
+{
+  "name": "tiamaria",
+  "version": "1.0.0",
+  "description": "Web y sistema de reservas para el restaurante Tia Maria",
+  "packageManager": "pnpm@11.22.0",
+  "private": true,
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "version": "^11.22.0",
+      "onFail": "error"
+    }
+  },
+  "type": "module"
+}
