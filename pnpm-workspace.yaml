@@ -1,1 +1,4 @@
-package: -"apps/*"
+packages:
+  - "apps/*"
+allowBuilds:
+  unrs-resolver: true
