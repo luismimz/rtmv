@@ -21,7 +21,7 @@ export default function MenuPage() {
           alt=""
           fill
           priority
-          className="object-cover opacity-25"
+          className="object-cover opacity-25" 
           sizes="100vw"
         />
         <div className="absolute inset-0 bg-linear-to-r from-primary via-primary/95 to-primary/65" />
