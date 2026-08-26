@@ -6,9 +6,15 @@ import { Button } from "@/components/ui/Button";
 
 export function ContactForm() {
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [formRenderedAt] = useState(() => Date.now());
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setSubmitError(null);
+    setIsSubmitting(true);
+    try {
     const form = new FormData(event.currentTarget);
     const contactData = {
       fullName: form.get("fullName"),
@@ -16,13 +22,30 @@ export function ContactForm() {
       phone: form.get("phone"),
       subject: form.get("subject"),
       message: form.get("message"),
+      website: form.get("website"),
+      formRenderedAt,
     };
-    console.log(
-      "Datos del formulario de contacto:",
-      JSON.stringify(contactData, null, 2),
-    );
+    const response = await fetch("/api/contact",{
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body:JSON.stringify(contactData),
+    });
+    if(!response.ok){
+      const result = (await response.json()) as { error?:string};
+      throw new Error(result.error ?? "No se pudo enviar el mensaje.")
+    }
     setIsSubmitted(true);
+  } catch (error){
+    console.error("Error enviando contacto;", error);
+    setSubmitError(
+      error instanceof Error ? error.message : "No se pudo enviar el mensaje.",
+    );
+  } finally {
+    setIsSubmitting(false);
   }
+}
   if (isSubmitted) {
     return (
       <div className="flex min-h-96 flex-col items-center justify-center text-center">
@@ -48,6 +71,14 @@ export function ContactForm() {
   }
   return (
     <form onSubmit={handleSubmit}>
+      <input
+        type="text"
+        name="website"
+        tabIndex={-1}
+        autoComplete="off"
+        aria-hidden="true"
+        style={{ position: "absolute", left: "-9999px", width: 1, height: 1, opacity: 0 }}
+      />
       <div>
         <label
           htmlFor="contact-name"
@@ -62,7 +93,7 @@ export function ContactForm() {
           required
           autoComplete="name"
           placeholder="Ej. Ana García"
-          className="w-full rounded-sm border border-border bg-background px-4 py-3 text-foreground outline-none transition-colors placeholder:text-foreground/40 focus:border-primary"
+          className="w-full rounded-sm border border-border px-4 py-3 text-foreground outline-none transition-colors placeholder:text-foreground/40 focus:border-primary"
         />
       </div>
       <div className="mt-5 grid gap-5 sm:grid-cols-2">
@@ -80,7 +111,7 @@ export function ContactForm() {
             required
             autoComplete="email"
             placeholder="ana@email.com"
-            className="w-full rounded-sm border border-border bg-background px-4 py-3 text-foreground outline-none transition-colors placeholder:text-foreground/40 focus:border-primary"
+            className="w-full rounded-sm border border-border px-4 py-3 text-foreground outline-none transition-colors placeholder:text-foreground/40 focus:border-primary"
           />
         </div>
         <div>
@@ -99,7 +130,7 @@ export function ContactForm() {
             type="tel"
             autoComplete="tel"
             placeholder="+34 600 000 000"
-            className="w-full rounded-sm border border-border bg-background px-4 py-3 text-foreground outline-none transition-colors placeholder:text-foreground/40 focus:border-primary"
+            className="w-full rounded-sm border border-border px-4 py-3 text-foreground outline-none transition-colors placeholder:text-foreground/40 focus:border-primary"
           />
         </div>
       </div>
@@ -115,7 +146,7 @@ export function ContactForm() {
           name="subject"
           required
           defaultValue=""
-          className="w-full rounded-sm border border-border bg-background px-4 py-3 text-foreground outline-none transition-colors focus:border-primary"
+          className="appearance-none w-full rounded-sm border border-border px-4 py-3 text-foreground outline-none transition-colors focus:border-primary"
         >
           <option value="" disabled>
             Selecciona un motivo
@@ -141,14 +172,20 @@ export function ContactForm() {
           rows={6}
           maxLength={1500}
           placeholder="Cuéntanos cómo podemos ayudarte..."
-          className="w-full resize-none rounded-sm border border-border bg-background px-4 py-3 text-foreground outline-none transition-colors placeholder:text-foreground/40 focus:border-primary"
+          className="w-full resize-none rounded-sm border border-border  px-4 py-3 text-foreground outline-none transition-colors placeholder:text-foreground/40 focus:border-primary"
         />
       </div>
+      {submitError && (
+        <p className="mt-6 text-sm font-medium text-red-600" role="alert">
+          {submitError}
+        </p>
+      )}
       <Button
         type="submit"
-        className="mt-8 w-full justify-center rounded-sm bg-primary px-6 py-3 font-semibold text-background transition-colors hover:bg-primary-hover"
+        disabled={isSubmitting}
+        className="mt-8 w-full justify-center rounded-sm bg-primary px-6 py-3 font-semibold text-background transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
       >
-        Enviar mensaje
+        {isSubmitting ? "Enviando..." : "Enviar mensaje"}
       </Button>
     </form>
   );

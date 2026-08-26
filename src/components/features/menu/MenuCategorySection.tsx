@@ -1,4 +1,5 @@
 import type { MenuCategory } from "@/app/data/menu";
+import { AllergenBadges } from "@/components/features/menu/AllergenBadges";
 
 type MenuCategorySectionProps = {category: MenuCategory;};
 
@@ -22,9 +23,12 @@ export function MenuCategorySection({
             key={`${category.id}-${item.name}`}
             className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-5 py-4">
             <div className="min-w-0">
-              <h3 className="wrap-break-words font-medium leading-6 text-foreground">
-                {item.name}
-              </h3>
+              <div className="flex flex-wrap items-center gap-2">
+                <h3 className="wrap-break-words font-medium leading-6 text-foreground">
+                  {item.name}
+                </h3>
+                <AllergenBadges allergens={item.allergens} />
+              </div>
               {item.description && (
                 <p className="mt-1 text-sm italic leading-5 text-foreground/55">
                   {item.description}

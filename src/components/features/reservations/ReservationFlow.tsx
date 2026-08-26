@@ -1,7 +1,16 @@
 "use client";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/Button";
-
+import { DatePicker } from "@/components/features/reservations/DatePicker";
+import {
+  getAvailableTimesForDate,
+  isRestaurantClosed,
+  reservationSettings,
+  restaurantServices,
+  restaurantZones,
+  type RestaurantZone,
+  type ServiceType,
+} from "@/app/data/restaurante-config";
 type ReservationStep = 1 | 2 | 3 ;
 
 const steps = [
@@ -9,27 +18,11 @@ const steps = [
   {number: 2,label: "Fecha / Hora",},
   {number: 3,label: "Contacto",},
 ] as const;
-type ServiceType = "comida" | "cena" | "desayuno" | "tapeo" | "brunch" | "merienda" | "postres" | "bebidas";
-type RestaurantZone = "terraza" | "terraza-acristalada" | "interior" | "barra" | "privado";
-type RestauranteZoneOption = {
-  value: RestaurantZone;
-  name: string;
-  description: string;
-};
-const restaurantZones : RestauranteZoneOption[] = [
-  {value: "terraza-acristalada", name: "Terraza acristalada", description: "Con luz natural y vistas al exterior, climatizada para cualquier época del año."},
-  {value: "terraza", name: "Terraza", description: "Al aire libre, ideal para disfrutar del buen tiempo"},
-  {value: "interior", name: "Interior", description: "Un ambiente tranquilo y acogedor para disfrutar de tu comida"},
-  {value: "barra", name: "Barra", description: "Ideal para tapeo, raciones y cañas."},
-  {value: "privado", name: "Privado", description: "Zona privada del restaurante"},
-]
-const avalailableTimes = [
-  "14:00","14:30","15:00","15:30","16:00","16:30","17:00","17:30","18:00","18:30","19:00","19:30","20:00","20:30","21:00","21:30","22:00","22:30",
-]
+
 
 export function ReservationFlow() {
   const [step, setStep] = useState<ReservationStep>(1);
-  const [guests, setGuests] = useState(2);
+  const [guests, setGuests] = useState<number>(reservationSettings.defaultGuests,);
   const [service, setService] = useState<ServiceType>("comida");
   const [zone, setZone] = useState<RestaurantZone>("terraza-acristalada");
   const [date, setDate] = useState("");
@@ -38,17 +31,39 @@ export function ReservationFlow() {
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [notes, setNotes] = useState("");
+  const [honeypot, setHoneypot] = useState("");
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [formRenderedAt, setFormRenderedAt] = useState(() => Date.now());
+  const availableTimesForSelectedDate = date
+  ? getAvailableTimesForDate(date)
+  : [];
   const isClosedDay = isRestaurantClosed(date);
   const validationMessage = 
   !date ? "Selecciona una fecha para continuar" 
   : isClosedDay ? "Los lunes el restaurante permanece cerrado" 
   : !time ? "Selecciona una hora para continuar" : null;
-  const canContinue = Boolean(date && !isClosedDay && time);
-  const dateInputRef = useRef<HTMLInputElement>(null);
-
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+function resetReservation() {
+  setStep(1);
+  setGuests(2);
+  setService(restaurantServices[0].value);
+  setZone(restaurantZones[0].value);
+  setDate("");
+  setTime(null);
+  setFullName("");
+  setPhone("");
+  setEmail("");
+  setNotes("");
+  setHoneypot("");
+  setIsSubmitted(false);
+  setSubmitError(null);
+  setFormRenderedAt(Date.now());
+}
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
   event.preventDefault();
+  setSubmitError(null);
+  setIsSubmitting(true);
   const reservationData = {
     guests,
     service,
@@ -60,14 +75,34 @@ export function ReservationFlow() {
       phone,
       email,
     },
-    notes: notes.trim() || null ,
+    notes: notes.trim() || null,
+    website: honeypot,
+    formRenderedAt,
   };
-  console.log(
-  "Datos de la reserva:",
-  JSON.stringify(reservationData, null, 2),
-);
 
-  setIsSubmitted(true);
+  try {
+    const response = await fetch("/api/reservations", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(reservationData),
+    });
+
+    if (!response.ok) {
+      const result = (await response.json()) as { error?: string };
+      throw new Error(result.error ?? "No se pudo enviar la reserva.");
+    }
+
+    setIsSubmitted(true);
+  } catch (error) {
+    console.error("Error enviando reserva:", error);
+    setSubmitError(
+      error instanceof Error ? error.message : "No se pudo enviar la reserva.",
+    );
+  } finally {
+    setIsSubmitting(false);
+  }
 }
   return(
     <div className="w-full">
@@ -81,9 +116,9 @@ export function ReservationFlow() {
           {steps.map((item) =>{
             const isActive = item.number <= step;
             return (
-              <div key={item.number} className="flex flex-col items-center gap-2 bg-background px-2">
+              <div key={item.number} className="flex flex-col items-center gap-2 bg-white px-2">
                 <div className={`flex size-8 items-center justify-center rounded-full border text-sm font-semibold transition-colors
-                ${isActive ? "border-primary bg-primary text-background" : "border-border bg-background text-foreground/50"}`}>
+                ${isActive ? "border-primary bg-primary text-background" : "border-border bg-white text-foreground/50"}`}>
                   {item.number}
                 </div>
                 <span className={`flex  items-center justify-center text-sm font-semibold transition-colors
@@ -110,25 +145,21 @@ export function ReservationFlow() {
           Comensales
         </label>
         <select
-          id="reservation-guests"
-          value={guests}
-          onChange={(event) => setGuests(Number(event.target.value))}
-          className="w-full rounded-sm border border-border bg-background px-4 py-3 text-foreground outline-none transition-colors focus:border-primary"
-        >
-          <option value={1}>1 persona</option>
-          <option value={2}>2 personas</option>
-          <option value={3}>3 personas</option>
-          <option value={4}>4 personas</option>
-          <option value={5}>5 personas</option>
-          <option value={6}>6 personas</option>
-          <option value={7}>7 personas</option>
-          <option value={8}>8 personas</option>
-          <option value={9}>9 personas</option>
-          <option value={10}>10 personas</option>
-          <option value={11}>11 personas</option>
-          <option value={12}>12 personas</option>
-          <option value={13}>+13 personas</option>
-        </select>
+        id="reservation-guests"
+        value={guests}
+        onChange={(event) => setGuests(Number(event.target.value))}
+        className="appearance-none w-full rounded-sm border border-border bg-white px-4 py-3 text-foreground outline-none transition-colors focus:border-primary">
+        {Array.from({
+      length:
+        reservationSettings.maxGuests -
+        reservationSettings.minGuests +
+        1,
+    },
+    (_, index) => reservationSettings.minGuests + index,
+  ).map((guest) => (
+    <option key={guest} value={guest}>{guest} {guest === 1 ? "persona" : "personas"}</option>
+  ))}
+</select>
       </div>
       <div>
         <label htmlFor="reservation-service" className="mb-2 block text-sm font-semibold text-foreground" >
@@ -138,10 +169,10 @@ export function ReservationFlow() {
           id="reservation-service"
           value={service}
           onChange={(event) => setService(event.target.value as ServiceType)}
-          className="w-full rounded-sm border border-border bg-background px-4 py-3 text-foreground outline-none transition-colors focus:border-primary">
-          <option value="comida">Comida</option>
-          <option value="cena">Cena</option>
-          <option value="tapeo">Tapeo y raciones</option>
+          className="appearance-none w-full rounded-sm border border-border bg-white px-4 py-3 text-foreground outline-none transition-colors focus:border-primary">
+          {restaurantServices.map((item)=>(
+            <option key={item.value} value={item.value}>{item.name}</option>
+          ))}
         </select>
       </div>
     </div>
@@ -214,36 +245,23 @@ export function ReservationFlow() {
           </p>
           <div className="mt-8">
             <label htmlFor="reservation-date" className="mb-2 block text-sm font-semibold text-foreground">Fecha</label>
-            <div 
-            onClick={() => dateInputRef.current?.showPicker()} 
-            className={`relative cursor-pointer rounded-sm border bg-background transition-colors
-              ${isClosedDay
-              ? "border-red-500"
-              : "border-border focus-within:border-primary"}`}>
-            <input
-            ref={dateInputRef}
-            type="date"
-            id="reservation-date"
-            value={date}
-            onChange={(event) => {setDate(event.target.value); setTime(null);}}
-            min={new Date().toISOString().split("T")[0]}
-            className="
-        w-full cursor-pointer bg-transparent px-4 py-3
-        text-foreground outline-none
-        [&::-webkit-calendar-picker-indicator]:absolute
-        [&::-webkit-calendar-picker-indicator]:inset-0
-        [&::-webkit-calendar-picker-indicator]:h-full
-        [&::-webkit-calendar-picker-indicator]:w-full
-        [&::-webkit-calendar-picker-indicator]:cursor-pointer
-        [&::-webkit-calendar-picker-indicator]:opacity-0
-      "
+            <DatePicker
+              id="reservation-date"
+              value={date}
+              onChange={(newDate) => {
+                setDate(newDate);
+                setTime(null);
+              }}
+              isDateDisabled={(candidate) =>
+                candidate < new Date().toISOString().split("T")[0] || isRestaurantClosed(candidate)
+              }
+              hasError={isClosedDay}
             />
-          </div>
           </div>
           <fieldset className="mt-8">
             <legend className="text-sm font-semibold text-foreground">Hora</legend>
             <div className="mt-3 grid grid-cols-3 gap-3 sm:grid-cols-4">
-              {avalailableTimes.map((availableTime) => {
+              {availableTimesForSelectedDate.map((availableTime) => {
                 return (
                   <button
                     key={availableTime}
@@ -288,6 +306,16 @@ export function ReservationFlow() {
       {/* Paso 3 */}
       {step === 3 && !isSubmitted && (
         <form onSubmit={handleSubmit}>
+          <input
+            type="text"
+            name="website"
+            value={honeypot}
+            onChange={(event) => setHoneypot(event.target.value)}
+            tabIndex={-1}
+            autoComplete="off"
+            aria-hidden="true"
+            style={{ position: "absolute", left: "-9999px", width: 1, height: 1, opacity: 0 }}
+          />
           <h3 className="font-serif text-2xl font-semibold text-primary">Tus datos</h3>
           <p className="mt-2 text-sm leading-6 text-foreground/65">
           Indícanos tus datos para confirmar la reserva.
@@ -306,7 +334,7 @@ export function ReservationFlow() {
             required
             autoComplete="name"
             placeholder="Ej.Ana García"
-            className="w-full rounded-sm border border-border bg-background px-4 py-3 text-foreground outline-none transition-colors placeholder:text-foreground/40 focus:border-primary"
+            className="w-full rounded-sm border border-border bg-white px-4 py-3 text-foreground outline-none transition-colors placeholder:text-foreground/40 focus:border-primary"
             />
           </div>
           <div className="mt-5 grid gap-5 sm:grid-cols-2">
@@ -324,7 +352,7 @@ export function ReservationFlow() {
               required
               autoComplete="tel"
               placeholder="+34 600 000 000"
-              className="w-full rounded-sm border border-border bg-background px-4 py-3 text-foreground outline-none transition-colors placeholder:text-foreground/40 focus:border-primary"/>
+              className="w-full rounded-sm border border-border bg-white px-4 py-3 text-foreground outline-none transition-colors placeholder:text-foreground/40 focus:border-primary"/>
             </div>
             <div>
         <label
@@ -340,7 +368,7 @@ export function ReservationFlow() {
           required
           autoComplete="email"
           placeholder="ana@email.com"
-          className="w-full rounded-sm border border-border bg-background px-4 py-3 text-foreground outline-none transition-colors placeholder:text-foreground/40 focus:border-primary"
+          className="w-full rounded-sm border border-border bg-white px-4 py-3 text-foreground outline-none transition-colors placeholder:text-foreground/40 focus:border-primary"
         />
       </div>
     </div>
@@ -359,19 +387,26 @@ export function ReservationFlow() {
         onChange={(event) => setNotes(event.target.value)}
         rows={3}
         placeholder="Alergias, trona para bebé, movilidad reducida..."
-        className="w-full resize-none rounded-sm border border-border bg-background px-4 py-3 text-foreground outline-none transition-colors placeholder:text-foreground/40 focus:border-primary"/>
+        className="w-full resize-none rounded-sm border border-border bg-white px-4 py-3 text-foreground outline-none transition-colors placeholder:text-foreground/40 focus:border-primary"/>
     </div>
+    {submitError && (
+      <p className="mt-6 text-sm font-medium text-red-600" role="alert">
+        {submitError}
+      </p>
+    )}
     <div className="mt-8 flex gap-3">
       <Button
         type="button"
         onClick={() => setStep(2)}
-        className="w-1/3 justify-center rounded-sm border border-border px-6 py-3 font-semibold text-foreground transition-colors hover:bg-primary/5">
+        disabled={isSubmitting}
+        className="w-1/3 justify-center rounded-sm border border-border px-6 py-3 font-semibold text-foreground transition-colors hover:bg-primary/5 disabled:cursor-not-allowed disabled:opacity-50">
         Atrás
       </Button>
       <Button
         type="submit"
-        className="w-2/3 justify-center rounded-sm bg-primary px-6 py-3 font-semibold text-background transition-colors hover:bg-primary-hover">
-        Confirmar reserva
+        disabled={isSubmitting}
+        className="w-2/3 justify-center rounded-sm bg-primary px-6 py-3 font-semibold text-background transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50">
+        {isSubmitting ? "Enviando..." : "Confirmar reserva"}
       </Button>
     </div>
   </form>
@@ -391,15 +426,16 @@ export function ReservationFlow() {
     <p className="mt-2 text-sm text-foreground/65">
       Te enviaremos la confirmación a {email}.
     </p>
+    <Button
+  type="button"
+  onClick={resetReservation}
+  className="mt-8 justify-center rounded-sm bg-primary px-6 py-3 font-semibold text-background transition-colors hover:bg-primary-hover"
+>
+  Hacer otra reserva
+</Button>
   </div>
 )}
       {/*fin paso 3 */}
 </div>
   );
-}
-function isRestaurantClosed(dateValue: string){
-  if(!dateValue) {return false;}
-  const [year, month, day] = dateValue.split("-").map(Number);
-  const selectedDate = new Date(year, month - 1, day);
-  return selectedDate.getDay() === 1;
 }

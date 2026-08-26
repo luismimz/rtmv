@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import type { ReactNode } from "react";
 import { CalendarDays } from "lucide-react";
 import { ReservationModal } from "@/components/features/reservations/ReservationModal";
 import { Button } from "@/components/ui/Button";
 
 type ReservationTriggerProps = {
-  children?: string;
+  children?: ReactNode;
   className?: string;
 };
 

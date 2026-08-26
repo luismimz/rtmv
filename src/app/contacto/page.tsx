@@ -4,13 +4,16 @@ import { Location01Icon, Mail01Icon,TelephoneIcon,} from "@hugeicons/core-free-i
 import { ContactForm } from "@/components/features/contact/ContactForm";
 import { Container } from "@/components/layout/Container";
 import { Section } from "@/components/ui/Section";
+import { MapEmbed } from "@/components/features/home/MapEmbed";
+import { siteContent } from "@/app/data/site-content";
+import { buildPageMetadata } from "@/lib/seo/build-metadata";
 
-export const metadata: Metadata = {
-  title: "Contacto | Tía María Vallecas",
-  description:
-    "Contacta con el restaurante Tía María en Vallecas. Consulta nuestra ubicación, horarios, teléfono y formulario de contacto.",
-};
+export const metadata: Metadata = buildPageMetadata(
+  siteContent.seo.pages.contacto,
+  "/contacto",
+);
 export default function ContactPage() {
+  const { identity, hours, copy } = siteContent;
   return (
     <>
       <Section className="py-16 lg:py-20">
@@ -18,13 +21,13 @@ export default function ContactPage() {
           <div className="grid gap-12 lg:grid-cols-[0.8fr_1.2fr] lg:items-start">
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.3rem] text-accent">
-                Contacto
+                {copy.contactPage.eyebrow}
               </p>
               <h1 className="mt-4 font-serif text-5xl font-semibold leading-tight text-primary">
-                Estamos aquí para ayudarte.
+                {copy.contactPage.headline}
               </h1>
               <p className="mt-6 max-w-xl text-lg leading-8 text-foreground/75">
-                Escríbenos para resolver cualquier consulta sobre el restaurante, celebraciones, alérgenos o reservas.
+                {copy.contactPage.subheadline}
               </p>
               <div className="mt-10 space-y-6">
                 <div className="flex items-start gap-4">
@@ -37,9 +40,9 @@ export default function ContactPage() {
                   <div>
                     <p className="font-semibold text-primary">Dirección</p>
                     <address className="mt-1 not-italic leading-6 text-foreground/70">
-                      Calle Carlos Solé, 74
+                      {identity.address.street}
                       <br />
-                      Vallecas, Madrid
+                      {identity.address.postalCode} {identity.address.city}
                     </address>
                   </div>
                 </div>
@@ -52,9 +55,9 @@ export default function ContactPage() {
                   />
                   <div>
                     <p className="font-semibold text-primary">Teléfono y WhatsApp</p>
-                    <a href="tel:+34911386700"
+                    <a href={`tel:${identity.phone.e164}`}
                       className="mt-1 block text-foreground/70 transition-colors hover:text-primary">
-                      911 386 700
+                      {identity.phone.display}
                     </a>
                   </div>
                 </div>
@@ -66,9 +69,9 @@ export default function ContactPage() {
                     className="mt-1 shrink-0 text-accent"/>
                   <div>
                     <p className="font-semibold text-primary">Email</p>
-                    <a href="mailto:info@tiamariavallecas.com"
+                    <a href={`mailto:${identity.email}`}
                       className="mt-1 block text-foreground/70 transition-colors hover:text-primary">
-                      info@tiamariavallecas.com
+                      {identity.email}
                     </a>
                   </div>
                 </div>
@@ -76,18 +79,23 @@ export default function ContactPage() {
               <div className="mt-10 border-l-2 border-accent pl-5">
                 <p className="font-semibold text-primary">Horario habitual</p>
                 <p className="mt-2 text-sm leading-6 text-foreground/70">
-                  Lunes cerrado
-                  <br />
-                  Martes a domingo: 12:00 hasta 23:30
+                  {hours.openingHours.map((item, index) => (
+                    <span key={item.days}>
+                      {item.hours === "Cerrado"
+                        ? `${item.days} cerrado`
+                        : `${item.days}: ${item.hours}`}
+                      {index < hours.openingHours.length - 1 && <br />}
+                    </span>
+                  ))}
                 </p>
               </div>
             </div>
-            <div className="rounded-2xl border border-border bg-background p-6 shadow-sm sm:p-8 lg:p-10">
+            <div className="rounded-2xl border border-border bg-white p-6 shadow-sm sm:p-8 lg:p-10">
               <h2 className="font-serif text-3xl font-semibold text-primary">
-                Envíanos un mensaje
+                {copy.contactPage.formHeadline}
               </h2>
               <p className="mt-3 text-sm leading-6 text-foreground/65">
-                Completa el formulario y nos pondremos en contacto contigo.
+                {copy.contactPage.formSubheadline}
               </p>
               <div className="mt-8">
                 <ContactForm />
@@ -98,15 +106,10 @@ export default function ContactPage() {
       </Section>
       <Section className="pt-0">
         <Container>
-          <div className="h-96 overflow-hidden rounded-2xl border border-border">
-            <iframe
-              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d780.3131275504825!2d-3.647931425758394!3d40.3913443918124!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0xd4225315c13f3db%3A0x608365b9aeeeeca3!2sRestaurante%20T%C3%ADa%20Mar%C3%ADa!5e0!3m2!1ses!2ses!4v1787272029400!5m2!1ses!2ses"
-              className="h-full w-full border-0"
-              loading="lazy"
-              referrerPolicy="no-referrer-when-downgrade"
-              title="Ubicación del restaurante Tía María en Vallecas"
-            />
-          </div>
+          <MapEmbed
+            className="h-96"
+            title={`Ubicación del restaurante ${identity.name} en ${identity.address.city}`}
+          />
         </Container>
       </Section>
     </>

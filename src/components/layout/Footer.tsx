@@ -2,8 +2,10 @@ import Link from "next/link";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { InstagramIcon, Mail01Icon, Location01Icon, TelephoneIcon } from "@hugeicons/core-free-icons";
 import { Container } from "@/components/layout/Container";
+import { siteContent } from "@/app/data/site-content";
 
 export function Footer(){
+  const { identity } = siteContent;
   return(
     <footer className="bg-primary text-background">
       <Container className="py-12">
@@ -11,10 +13,10 @@ export function Footer(){
           <div>
             <Link href="/" className="inline-flex flex-col leading-none">
               <span className="font-serif text-4xl font-bold uppercase tracking-tight">
-                Tía María 
+                {identity.name}
               </span>
               <span className="mt-1 text-sm font-semibold uppercase tracking-[0.3rem] text-accent">
-                Restaurante & cerveceria
+                {identity.tagline}
               </span>
             </Link>
             <p className="mt-5 max-w-sm text-sm leading-6 text-background/70">
@@ -59,22 +61,22 @@ export function Footer(){
            <HugeiconsIcon
            icon={Location01Icon} size={18} className="mt-0.5 shrink-0 text-accent"/>
             <span>
-              Calle Carlos Solé, 74
+              {identity.address.street}
               <br/>
-              28051 Vallecas, Madrid
+              {identity.address.postalCode} {identity.address.city}
             </span>
           </div>
-          <a href="tel:+34911386700"
+          <a href={`tel:${identity.phone.e164}`}
           className="flex items-center gap-3 transition-colors hover:text-accent">
-            <HugeiconsIcon 
+            <HugeiconsIcon
             icon={TelephoneIcon} size={18} className="text-accent"/>
-            911 386 700
+            {identity.phone.display}
           </a>
-          <a href="mailito:info@tiamariavallecas.com"
+          <a href={`mailto:${identity.email}`}
           className="flex items-center gap-3 transition-colors hover:text-accent">
-            <HugeiconsIcon 
+            <HugeiconsIcon
             icon={Mail01Icon} size={18} className="text-accent"/>
-            info@tiamariavallecas.com
+            {identity.email}
           </a>
           <a href="#"
           className="flex items-center gap-3 transition-colors hover:text-accent">
@@ -90,7 +92,7 @@ export function Footer(){
         </div>
         <div className="flex flex-col gap-3 pt-6 text-xs text-background/50 sm:flex-row sm:items-center sm:justify-between">
         <p>
-           © {new Date().getFullYear()} Tía María. Todos los derechos reservados. Create by: <a href="https://luismiguelmontalvan.com">Luis Miguel Montalván</a>
+           © {new Date().getFullYear()} {identity.name}. Todos los derechos reservados. {identity.footerCredit.label}: <a href={identity.footerCredit.url}>{identity.footerCredit.name}</a>
         </p>
         <div className="flex gap-5">
           <Link href="/aviso-legal" className="hover:text-background">

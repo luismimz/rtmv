@@ -6,17 +6,19 @@ import { Container } from "@/components/layout/Container";
 import { Section } from "@/components/ui/Section";
 import { Button } from "@/components/ui/Button";
 import { ReservationModal } from "@/components/features/reservations/ReservationModal";
+import { siteContent } from "@/app/data/site-content";
 
 export function ReservationCta(){
   const [isReservationOpen, setIsReservationOpen] = useState(false);
+  const { images, copy } = siteContent;
   return (
     <>
     <Section className="py-10">
       <Container>
           <div className="relative overflow-hidden rounded-2xl">
             <Image
-            src="/images/hero-terraza.png"
-            alt="Terraza del restaurante Tía María preparada para recibir clientes"
+            src={images.reservationCta.src}
+            alt={images.reservationCta.alt}
             fill
             className="object-cover"
             sizes="(min-width: 1024px) 50vw, 100vw"
@@ -25,10 +27,10 @@ export function ReservationCta(){
           <div className="relative z-10 flex min-h-44 flex-col justify-between gap-8 px-8 ppy-10 sm:px-12 lg:flex-row lg:items-center">
             <div>
               <p className="font-serif text-3xl font-semibold text-background">
-                Reserva tu mesa y ven a disfrutar.
+                {copy.reservationCta.headline}
               </p>
               <p className="mt-2 text-base text-background/80">
-              Haz tu reserva online en unos pocos pasos.
+              {copy.reservationCta.subheadline}
               </p>
               </div>
               <Button 

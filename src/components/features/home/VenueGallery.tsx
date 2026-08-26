@@ -7,29 +7,17 @@ import "swiper/css";
 import "swiper/css/navigation";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { CancelSquareIcon } from "@hugeicons/core-free-icons";
+import { siteContent } from "@/app/data/site-content";
 
 const venueImages = [
-  {
-    src : "/images/hero-terraza.webp",
-    alt: "Terraza acristalada",
-    title: "Terraza acristalada",
-  },
-  {
-    src : "/images/terraza.webp",
-    alt: "Terraza al aire libre",
-    title: "Terraza al aire libre",
-  },
-  {
-    src : "/images/comedor.webp",
-    alt: "Comedor interior",
-    title: "Comedor interior",
-  },
-  {
-    src : "/images/mini-terraza.webp",
-    alt: "Mini terraza",
-    title: "Mini terraza",
-  },
-];
+  siteContent.images.galleryTerrazaAcristalada,
+  siteContent.images.galleryTerraza,
+  siteContent.images.galleryComedor,
+  siteContent.images.galleryMiniTerraza,
+  siteContent.images.galleryMesaGrupos,
+  siteContent.images.galleryTerrazaExterior,
+].map((image) => ({ ...image, title: image.alt }));
+
 export function VenueGallery(){
   const [selectedImage, setSelectedImage] = useState<number | null>(null);
   return (

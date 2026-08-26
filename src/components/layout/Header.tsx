@@ -3,6 +3,7 @@ import { useState } from "react";
 import { CalendarDays } from "lucide-react";
 import { Container } from "@/components/layout/Container";
 import { Button } from "@/components/ui/Button";
+import { siteContent } from "@/app/data/site-content";
 
 export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -12,10 +13,10 @@ export function Header() {
       <Container className="flex h-20 items-center justify-between md:h-25">
         <Button href="/" className="flex min-w-0 flex-col leading-none">
           <span className="font-serif text-3xl font-bold uppercase tracking-tight text-primary sm:text-4xl md:text-5xl">
-            Tía María
+            {siteContent.identity.name}
           </span>
           <span className="mt-1 text-[10px] font-semibold uppercase tracking-[0.2rem] text-accent sm:text-xs sm:tracking-[0.3rem]">
-            Restaurante & Cervecería
+            {siteContent.identity.tagline}
           </span>
         </Button>
         {/* Navegación de escritorio */}

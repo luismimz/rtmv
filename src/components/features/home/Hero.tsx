@@ -4,20 +4,22 @@ import { Container} from "@/components/layout/Container";
 import { Section } from "@/components/ui/Section";
 import { Button } from "@/components/ui/Button";
 import Image from "next/image";
-import { CalendarDays, UtensilsCrossed, Wheat} from "lucide-react";
+import { CalendarDays, UtensilsCrossed} from "lucide-react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { WheatIcon } from "@hugeicons/core-free-icons";
 import { ReservationModal } from "@/components/features/reservations/ReservationModal";
+import { siteContent } from "@/app/data/site-content";
 
 
 export function Hero(){
   const [isReservationOpen, setIsReservationOpen] = useState(false);
+  const { identity, images, copy } = siteContent;
   return (
     <>
     <Section className="relative min-h-97.5 overflow-hidden">
-      <Image 
-          src="/images/hero-terraza.png"
-          alt="Terraza del restaurante Tía María en Vallecas"
+      <Image
+          src={images.hero.src}
+          alt={images.hero.alt}
           fill
           priority
           className="object-cover object-center"
@@ -28,9 +30,9 @@ export function Hero(){
             <Container className="relative z-10 flex min-h-97.5 items-center">
               <div className="max-w-120 py-12">
                 <h1 className="uppercase font-serif text-5xl font-semibold leading-[0.9] text-primary tracking-tight sm:text-6xl lg:text-7xl">
-                  Tía María
+                  {identity.name}
                    <span className="mt-2 block font-serif text-2xl font-medium normal-case tracking-wide leading-none  text-accent sm:text-3xl lg:text-4xl">
-                    Restaurante & Terraza
+                    {copy.hero.subheadline}
                     </span>
                 </h1>
                 <div aria-hidden="true"
@@ -44,9 +46,9 @@ export function Hero(){
                       <span className="h-px w-20 bg-accent/70"/>
                     </div>
                 <p className="mt-6 max-w-xl text-lg leading-8 text-foreground/80">
-                Tapas, raciones y cocina tradicional 
+                {copy.hero.tagline}
                 <span className="block">
-                  en un espacio para disfrutar.
+                  {copy.hero.taglineSecondLine}
                 </span></p>
                 <div className="mt-7 flex flex-col gap-4 sm:flex-row">
                   <Button 

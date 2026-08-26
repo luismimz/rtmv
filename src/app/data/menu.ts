@@ -1,7 +1,41 @@
+export type AllergenId =
+  | "gluten"
+  | "crustaceos"
+  | "huevos"
+  | "pescado"
+  | "cacahuetes"
+  | "soja"
+  | "lacteos"
+  | "frutos-cascara"
+  | "apio"
+  | "mostaza"
+  | "sesamo"
+  | "sulfitos"
+  | "altramuces"
+  | "moluscos";
+
+export const allergenCatalog: { id: AllergenId; number: number; label: string }[] = [
+  { id: "gluten", number: 1, label: "Gluten" },
+  { id: "crustaceos", number: 2, label: "Crustáceos" },
+  { id: "huevos", number: 3, label: "Huevos" },
+  { id: "pescado", number: 4, label: "Pescado" },
+  { id: "cacahuetes", number: 5, label: "Cacahuetes" },
+  { id: "soja", number: 6, label: "Soja" },
+  { id: "lacteos", number: 7, label: "Lácteos" },
+  { id: "frutos-cascara", number: 8, label: "Frutos de cáscara" },
+  { id: "apio", number: 9, label: "Apio" },
+  { id: "mostaza", number: 10, label: "Mostaza" },
+  { id: "sesamo", number: 11, label: "Sésamo" },
+  { id: "sulfitos", number: 12, label: "Sulfitos" },
+  { id: "altramuces", number: 13, label: "Altramuces" },
+  { id: "moluscos", number: 14, label: "Moluscos" },
+];
+
 export type MenuItem = {
   name: string;
   price: string;
   description?: string;
+  allergens?: AllergenId[];
 };
 
 export type MenuCategory = {
@@ -158,4 +192,95 @@ export const foodMenuCategories: MenuCategory[] = [
 export const foodMenuNotes = [
   "Se incrementa un 10% en terraza.",
   "Tenemos información sobre alérgenos. Nuestro personal estará encantado de informarle.",
+];
+
+export const drinkMenuCategories: MenuCategory[] = [
+  {
+    id: "vinos-tintos",
+    title: "Vinos tintos",
+    items: [
+      {
+        name: "David Moreno Crianza Selección",
+        price: "19,00€",
+        description: "D.O. Rioja",
+      },
+      { name: "Nobbis", price: "18,50€", description: "D.O. Ribera del Duero" },
+      { name: "Angelitos Negros", price: "18,50€", description: "D.O. Toro" },
+      { name: "Madai Mencía Origen", price: "16,50€", description: "D.O. Bierzo" },
+    ],
+  },
+  {
+    id: "vinos-rosados",
+    title: "Vinos rosados",
+    items: [
+      { name: "David Moreno Rosado", price: "14,00€", description: "D.O. Rioja" },
+    ],
+  },
+  {
+    id: "vinos-blancos",
+    title: "Vinos blancos",
+    items: [
+      {
+        name: "David Moreno Fermentado Barrica",
+        price: "16,00€",
+        description: "D.O. Rioja",
+      },
+      { name: "Peramor Verdejo", price: "14,00€", description: "D.O. Rueda" },
+      {
+        name: "Hacienda Grimón Sauvignon",
+        price: "14,00€",
+        description: "D.O. Rioja",
+      },
+      { name: "Ruchel Godello", price: "16,00€", description: "D.O. Valdeorras" },
+      { name: "2 Amigos Albariño", price: "20,00€", description: "D.O. Rías Baixas" },
+    ],
+  },
+  {
+    id: "tonica-original",
+    title: "Tónica Original",
+    items: [
+      { name: "Hendrick's", price: "12,00€" },
+      { name: "Tanqueray", price: "8,00€" },
+      { name: "Citadelle", price: "11,00€" },
+      { name: "Martin Miller's", price: "10,00€" },
+      { name: "Magellan Gin", price: "12,00€" },
+      { name: "Bombay Sapphire", price: "9,00€" },
+    ],
+  },
+  {
+    id: "ginger-ale",
+    title: "Ginger Ale",
+    items: [
+      { name: "Cutty Sark", price: "7,00€" },
+      { name: "Ballantine's Finest", price: "7,00€" },
+      { name: "Black Label", price: "9,00€" },
+      { name: "Jack Daniel's", price: "Consultar precio" },
+      { name: "Red Label", price: "7,00€" },
+      { name: "J&B", price: "6,50€" },
+    ],
+  },
+  {
+    id: "tonica-limon",
+    title: "Tónica Limón",
+    items: [
+      { name: "Brugal", price: "7,00€" },
+      { name: "Havana Club", price: "9,00€" },
+      { name: "Santa Teresa Añejo", price: "8,00€" },
+      { name: "Cacique", price: "7,00€" },
+      { name: "Matusalem 7", price: "8,00€" },
+      { name: "Barceló", price: "7,00€" },
+    ],
+  },
+  {
+    id: "tonica-pink",
+    title: "Tónica Pink",
+    items: [
+      { name: "Puerto de Indias", price: "9,50€" },
+      { name: "Smirnoff", price: "6,50€" },
+      { name: "Seagram's", price: "8,00€" },
+      { name: "Tanqueray", price: "8,00€" },
+      { name: "Absolut", price: "7,00€" },
+      { name: "Bombay Sapphire", price: "9,00€" },
+    ],
+  },
 ];
