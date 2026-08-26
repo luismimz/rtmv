@@ -116,9 +116,9 @@ function resetReservation() {
           {steps.map((item) =>{
             const isActive = item.number <= step;
             return (
-              <div key={item.number} className="flex flex-col items-center gap-2 bg-white px-2">
+              <div key={item.number} className="flex flex-col items-center gap-2 px-2">
                 <div className={`flex size-8 items-center justify-center rounded-full border text-sm font-semibold transition-colors
-                ${isActive ? "border-primary bg-primary text-background" : "border-border bg-white text-foreground/50"}`}>
+                ${isActive ? "border-primary bg-primary text-background" : "border-border text-foreground/50"}`}>
                   {item.number}
                 </div>
                 <span className={`flex  items-center justify-center text-sm font-semibold transition-colors
