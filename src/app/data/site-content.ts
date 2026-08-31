@@ -117,7 +117,7 @@ export const siteContent: SiteContent = {
     footerCredit: {
       label: "Creada por",
       name: "Luis Miguel Montalván",
-      url: "https://luismiguelmontalvan.com",
+      url: "https://luismontalvan.com",
     },
   },
   legal: {
