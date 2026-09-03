@@ -190,7 +190,6 @@ export const foodMenuCategories: MenuCategory[] = [
 ];
 
 export const foodMenuNotes = [
-  "Se incrementa un 10% en terraza.",
   "Tenemos información sobre alérgenos. Nuestro personal estará encantado de informarle.",
 ];
 
