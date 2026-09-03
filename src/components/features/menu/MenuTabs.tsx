@@ -87,7 +87,7 @@ export function MenuTabs({
           </ReservationTrigger>
         </aside>
         <main className="min-w-0">
-          <div className="mb-10 grid gap-4 sm:grid-cols-2">
+          <div className="mb-10 grid gap-4 sm:grid-cols">
             {notes.map((note) => (
               <div key={note} className="rounded-2xl border border-border bg-primary/5 p-5">
                 <p className="text-sm leading-6 text-foreground/70">{note}</p>
