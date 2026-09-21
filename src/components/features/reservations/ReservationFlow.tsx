@@ -1,16 +1,28 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { DatePicker } from "@/components/features/reservations/DatePicker";
-import {
-  getAvailableTimesForDate,
-  isRestaurantClosed,
-  reservationSettings,
-  restaurantServices,
-  restaurantZones,
-  type RestaurantZone,
-  type ServiceType,
-} from "@/app/data/restaurante-config";
+import { siteContent } from "@/app/data/site-content";
+import type { Availability } from "@/lib/directus/booking";
+
+const DEFAULT_GUESTS = 2;
+
+function formatDay(value: string) {
+  const [year, month, day] = value.split("-").map(Number);
+  return new Intl.DateTimeFormat("es-ES", { day: "numeric", month: "long" }).format(
+    new Date(year, month - 1, day),
+  );
+}
+
+function describeClosure(closure: Availability["cierres"][number]) {
+  const range =
+    closure.desde === closure.hasta
+      ? `el ${formatDay(closure.desde)}`
+      : `del ${formatDay(closure.desde)} al ${formatDay(closure.hasta)}`;
+
+  return `Cerramos ${range}${closure.motivo ? ` (${closure.motivo})` : ""}.`;
+}
+
 type ReservationStep = 1 | 2 | 3 ;
 
 const steps = [
@@ -22,9 +34,9 @@ const steps = [
 
 export function ReservationFlow() {
   const [step, setStep] = useState<ReservationStep>(1);
-  const [guests, setGuests] = useState<number>(reservationSettings.defaultGuests,);
-  const [service, setService] = useState<ServiceType>("comida");
-  const [zone, setZone] = useState<RestaurantZone>("terraza-acristalada");
+  const [guests, setGuests] = useState<number | null>(null);
+  const [service, setService] = useState<string | null>(null);
+  const [zone, setZone] = useState<string | null>(null);
   const [date, setDate] = useState("");
   const [time, setTime] = useState<string | null>(null);
   const [fullName, setFullName] = useState("");
@@ -36,38 +48,123 @@ export function ReservationFlow() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [formRenderedAt, setFormRenderedAt] = useState(() => Date.now());
-  const availableTimesForSelectedDate = date
-  ? getAvailableTimesForDate(date)
-  : [];
-  const isClosedDay = isRestaurantClosed(date);
-  const validationMessage = 
-  !date ? "Selecciona una fecha para continuar" 
-  : isClosedDay ? "Los lunes el restaurante permanece cerrado" 
-  : !time ? "Selecciona una hora para continuar" : null;
-function resetReservation() {
-  setStep(1);
-  setGuests(2);
-  setService(restaurantServices[0].value);
-  setZone(restaurantZones[0].value);
-  setDate("");
-  setTime(null);
-  setFullName("");
-  setPhone("");
-  setEmail("");
-  setNotes("");
-  setHoneypot("");
-  setIsSubmitted(false);
-  setSubmitError(null);
-  setFormRenderedAt(Date.now());
-}
+  const [availability, setAvailability] = useState<Availability | null>(null);
+  const [availabilityError, setAvailabilityError] = useState(false);
+  const [loadAttempt, setLoadAttempt] = useState(0);
+  const [times, setTimes] = useState<string[]>([]);
+  const [timesLoading, setTimesLoading] = useState(false);
+  const [timesError, setTimesError] = useState(false);
+  const timesRequestId = useRef(0);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    fetch("/api/availability")
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`Disponibilidad: ${response.status}`);
+        }
+        return response.json() as Promise<Availability>;
+      })
+      .then((data) => {
+        if (!cancelled) {
+          setAvailability(data);
+        }
+      })
+      .catch((error) => {
+        console.error("Error cargando la disponibilidad:", error);
+        if (!cancelled) {
+          setAvailabilityError(true);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [loadAttempt]);
+
+  const zones = availability?.zones ?? [];
+  const services = availability?.services ?? [];
+  const minGuests = availability?.restaurante.min_guests ?? 1;
+  const maxGuests = availability?.restaurante.max_guests ?? 1;
+  const effectiveGuests = Math.min(Math.max(guests ?? DEFAULT_GUESTS, minGuests), maxGuests);
+  const effectiveService = service ?? services[0]?.slug ?? "";
+  const effectiveZone = zone ?? zones[0]?.slug ?? "";
+  const closedDays = new Set(availability?.dias_cerrados ?? []);
+  const closures = availability?.cierres ?? [];
+  const hasTimesProblem = Boolean(date) && !timesLoading && (timesError || times.length === 0);
+  const validationMessage = !date
+    ? "Selecciona una fecha para continuar"
+    : timesLoading
+      ? null
+      : timesError
+        ? "No se pudieron cargar las horas. Vuelve a elegir el día."
+        : times.length === 0
+          ? "No hay horas disponibles ese día. Prueba con otra fecha."
+          : !time
+            ? "Selecciona una hora para continuar"
+            : null;
+
+  function retryAvailability() {
+    setAvailabilityError(false);
+    setLoadAttempt((attempt) => attempt + 1);
+  }
+
+  async function handleDateChange(newDate: string) {
+    const requestId = ++timesRequestId.current;
+    setDate(newDate);
+    setTime(null);
+    setTimes([]);
+    setTimesError(false);
+    setTimesLoading(true);
+
+    try {
+      const response = await fetch(`/api/availability?date=${newDate}`);
+      if (!response.ok) {
+        throw new Error(`Horas: ${response.status}`);
+      }
+      const data = (await response.json()) as Availability;
+      if (requestId === timesRequestId.current) {
+        setTimes(data.times);
+      }
+    } catch (error) {
+      console.error("Error cargando las horas:", error);
+      if (requestId === timesRequestId.current) {
+        setTimesError(true);
+      }
+    } finally {
+      if (requestId === timesRequestId.current) {
+        setTimesLoading(false);
+      }
+    }
+  }
+
+  function resetReservation() {
+    setStep(1);
+    setGuests(null);
+    setService(null);
+    setZone(null);
+    setDate("");
+    setTime(null);
+    setTimes([]);
+    setTimesError(false);
+    setFullName("");
+    setPhone("");
+    setEmail("");
+    setNotes("");
+    setHoneypot("");
+    setIsSubmitted(false);
+    setSubmitError(null);
+    setFormRenderedAt(Date.now());
+  }
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
   event.preventDefault();
   setSubmitError(null);
   setIsSubmitting(true);
   const reservationData = {
-    guests,
-    service,
-    zone,
+    guests: effectiveGuests,
+    service: effectiveService,
+    zone: effectiveZone,
     date,
     time,
     customer: {
@@ -132,172 +229,195 @@ function resetReservation() {
       </div>
       {/*Paso 1*/}
       {step === 1 && (
-  <div>
-    <h3 className="font-serif text-2xl font-semibold text-primary">
-      Detalles de la reserva
-    </h3>
-    <p className="mt-2 text-sm leading-6 text-foreground/65">
-      Indícanos cuántas personas sois y dónde os gustaría sentaros.
-    </p>
-    <div className="mt-8 grid gap-5 sm:grid-cols-2">
-      <div>
-        <label htmlFor="reservation-guests"className="mb-2 block text-sm font-semibold text-foreground">
-          Comensales
-        </label>
-        <select
-        id="reservation-guests"
-        value={guests}
-        onChange={(event) => setGuests(Number(event.target.value))}
-        className="appearance-none w-full rounded-sm border border-border bg-white px-4 py-3 text-foreground outline-none transition-colors focus:border-primary">
-        {Array.from({
-      length:
-        reservationSettings.maxGuests -
-        reservationSettings.minGuests +
-        1,
-    },
-    (_, index) => reservationSettings.minGuests + index,
-  ).map((guest) => (
-    <option key={guest} value={guest}>{guest} {guest === 1 ? "persona" : "personas"}</option>
-  ))}
-</select>
-      </div>
-      <div>
-        <label htmlFor="reservation-service" className="mb-2 block text-sm font-semibold text-foreground" >
-          Tipo de servicio
-        </label>
-        <select
-          id="reservation-service"
-          value={service}
-          onChange={(event) => setService(event.target.value as ServiceType)}
-          className="appearance-none w-full rounded-sm border border-border bg-white px-4 py-3 text-foreground outline-none transition-colors focus:border-primary">
-          {restaurantServices.map((item)=>(
-            <option key={item.value} value={item.value}>{item.name}</option>
-          ))}
-        </select>
-      </div>
-    </div>
-    <fieldset className="mt-8">
-      <legend className="text-sm font-semibold text-foreground">
-        Selecciona una zona
-      </legend>
-      <div className="mt-3 grid gap-3 sm:grid-cols-2">
-        {restaurantZones.map((item) => {
-          const isSelected = zone === item.value;
-
-          return (
-            <label
-              key={item.value}
-              className={`cursor-pointer rounded-md border p-4 transition-colors ${
-                isSelected
-                  ? "border-primary bg-primary/5"
-                  : "border-border hover:border-primary/50"
-              }`}
-            >
-              <input
-                type="radio"
-                name="reservation-zone"
-                value={item.value}
-                checked={isSelected}
-                onChange={() => setZone(item.value)}
-                className="sr-only"
-              />
-              <div className="flex items-start gap-3">
-                <span
-                  aria-hidden="true"
-                  className={`mt-1 flex size-5 shrink-0 items-center justify-center rounded-full border ${
-                    isSelected
-                      ? "border-primary"
-                      : "border-foreground/30"
-                  }`}
-                >
-                  {isSelected && (
-                    <span className="size-2.5 rounded-full bg-primary" />
-                  )}
-                </span>
-                <span>
-                  <span className="block text-sm font-semibold text-foreground">
-                    {item.name}
-                  </span>
-                  <span className="mt-1 block text-xs leading-5 text-foreground/60">
-                    {item.description}
-                  </span>
-                </span>
+        <div>
+          <h3 className="font-serif text-2xl font-semibold text-primary">
+            Detalles de la reserva
+          </h3>
+          <p className="mt-2 text-sm leading-6 text-foreground/65">
+            Indícanos cuántas personas sois y dónde os gustaría sentaros.
+          </p>
+          {availabilityError ? (
+            <div className="mt-8 rounded-md border border-red-200 bg-red-50 p-4" role="alert">
+              <p className="text-sm text-red-700">
+                No hemos podido cargar la disponibilidad. Inténtalo de nuevo o llámanos al{" "}
+                {siteContent.identity.phone.display}.
+              </p>
+              <Button
+                type="button"
+                onClick={retryAvailability}
+                className="mt-3 rounded-sm border border-red-300 px-4 py-2 text-sm font-semibold text-red-700 transition-colors hover:bg-red-100">
+                Reintentar
+              </Button>
+            </div>
+          ) : !availability ? (
+            <p className="mt-8 text-sm text-foreground/60">Cargando disponibilidad...</p>
+          ) : (
+            <>
+              <div className="mt-8 grid gap-5 sm:grid-cols-2">
+                <div>
+                  <label htmlFor="reservation-guests" className="mb-2 block text-sm font-semibold text-foreground">
+                    Comensales
+                  </label>
+                  <select
+                    id="reservation-guests"
+                    value={effectiveGuests}
+                    onChange={(event) => setGuests(Number(event.target.value))}
+                    className="appearance-none w-full rounded-sm border border-border bg-white px-4 py-3 text-foreground outline-none transition-colors focus:border-primary">
+                    {Array.from(
+                      { length: maxGuests - minGuests + 1 },
+                      (_, index) => minGuests + index,
+                    ).map((guest) => (
+                      <option key={guest} value={guest}>{guest} {guest === 1 ? "persona" : "personas"}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor="reservation-service" className="mb-2 block text-sm font-semibold text-foreground">
+                    Tipo de servicio
+                  </label>
+                  <select
+                    id="reservation-service"
+                    value={effectiveService}
+                    onChange={(event) => setService(event.target.value)}
+                    className="appearance-none w-full rounded-sm border border-border bg-white px-4 py-3 text-foreground outline-none transition-colors focus:border-primary">
+                    {services.map((item) => (
+                      <option key={item.slug} value={item.slug}>{item.name}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
-            </label>
-          );
-        })}
-      </div>
-    </fieldset>
-    <Button
-      type="button"
-      onClick={() => setStep(2)}
-      className="mt-8 w-full justify-center rounded-sm bg-primary px-6 py-3 font-semibold text-background transition-colors hover:bg-primary-hover"
-    >
-      Continuar a fecha y hora
-    </Button>
-  </div>)}
+              <fieldset className="mt-8">
+                <legend className="text-sm font-semibold text-foreground">
+                  Selecciona una zona
+                </legend>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  {zones.map((item) => {
+                    const isSelected = effectiveZone === item.slug;
+
+                    return (
+                      <label
+                        key={item.slug}
+                        className={`cursor-pointer rounded-md border p-4 transition-colors ${
+                          isSelected
+                            ? "border-primary bg-primary/5"
+                            : "border-border hover:border-primary/50"
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="reservation-zone"
+                          value={item.slug}
+                          checked={isSelected}
+                          onChange={() => setZone(item.slug)}
+                          className="sr-only"
+                        />
+                        <div className="flex items-start gap-3">
+                          <span
+                            aria-hidden="true"
+                            className={`mt-1 flex size-5 shrink-0 items-center justify-center rounded-full border ${
+                              isSelected
+                                ? "border-primary"
+                                : "border-foreground/30"
+                            }`}
+                          >
+                            {isSelected && (
+                              <span className="size-2.5 rounded-full bg-primary" />
+                            )}
+                          </span>
+                          <span>
+                            <span className="block text-sm font-semibold text-foreground">
+                              {item.name}
+                            </span>
+                            {item.description && (
+                              <span className="mt-1 block text-xs leading-5 text-foreground/60">
+                                {item.description}
+                              </span>
+                            )}
+                          </span>
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
+              </fieldset>
+              <Button
+                type="button"
+                onClick={() => setStep(2)}
+                className="mt-8 w-full justify-center rounded-sm bg-primary px-6 py-3 font-semibold text-background transition-colors hover:bg-primary-hover"
+              >
+                Continuar a fecha y hora
+              </Button>
+            </>
+          )}
+        </div>
+      )}
       {/*Paso 2*/}
-      {step === 2 && (
+      {step === 2 && availability && (
         <div>
           <h3 className="font-serif text-2xl font-semibold text-primary">Fecha y hora</h3>
           <p className="mt-2 text-sm leading-6 text-foreground/65">
-          Indícanos cuándo quieres venir a visitarnos.
+            Indícanos cuándo quieres venir a visitarnos.
           </p>
           <div className="mt-8">
             <label htmlFor="reservation-date" className="mb-2 block text-sm font-semibold text-foreground">Fecha</label>
             <DatePicker
               id="reservation-date"
               value={date}
-              onChange={(newDate) => {
-                setDate(newDate);
-                setTime(null);
-              }}
+              today={availability.hoy}
+              onChange={handleDateChange}
               isDateDisabled={(candidate) =>
-                candidate < new Date().toISOString().split("T")[0] || isRestaurantClosed(candidate)
+                candidate < availability.hoy || closedDays.has(candidate)
               }
-              hasError={isClosedDay}
             />
+            {closures.length > 0 && (
+              <ul className="mt-3 space-y-1 text-xs text-foreground/60">
+                {closures.map((closure) => (
+                  <li key={`${closure.desde}-${closure.hasta}`}>{describeClosure(closure)}</li>
+                ))}
+              </ul>
+            )}
           </div>
           <fieldset className="mt-8">
             <legend className="text-sm font-semibold text-foreground">Hora</legend>
-            <div className="mt-3 grid grid-cols-3 gap-3 sm:grid-cols-4">
-              {availableTimesForSelectedDate.map((availableTime) => {
-                return (
+            {timesLoading ? (
+              <p className="mt-3 text-sm text-foreground/60">Cargando horas...</p>
+            ) : (
+              <div className="mt-3 grid grid-cols-3 gap-3 sm:grid-cols-4">
+                {times.map((availableTime) => (
                   <button
                     key={availableTime}
                     type="button"
-                    disabled={!date || isClosedDay}
                     onClick={() => setTime(availableTime)}
-                    className={`rounded-sm border px-4 py-3 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-40 
-                      ${time === availableTime
-                      ? "border-primary bg-primary text-background"
-                      : "border-border bg-background text-foreground hover:bg-primary/50"
-                  }`}>
-                  {availableTime}
-                </button>
-              );
-              })}
-            </div>
+                    className={`rounded-sm border px-4 py-3 text-sm font-semibold transition-colors ${
+                      time === availableTime
+                        ? "border-primary bg-primary text-background"
+                        : "border-border bg-background text-foreground hover:bg-primary/50"
+                    }`}>
+                    {availableTime}
+                  </button>
+                ))}
+              </div>
+            )}
           </fieldset>
           {validationMessage && (
-              <p className={`mt-6 text-sm font-medium 
-                ${isClosedDay ? "text-red-600" : "text-foreground/60"}`}
-                role={isClosedDay ? "alert" : undefined}>
-                {validationMessage}
-              </p>
-            )}
+            <p
+              className={`mt-6 text-sm font-medium ${hasTimesProblem ? "text-red-600" : "text-foreground/60"}`}
+              role={hasTimesProblem ? "alert" : undefined}>
+              {validationMessage}
+            </p>
+          )}
           <div className="mt-8 flex gap-3">
             <Button
               type="button"
               onClick={() => setStep(1)}
               className="w-1/3 justify-center rounded-sm border border-border px-6 py-3 font-semibold text-foreground transition-colors hover:bg-background/50">
               Atrás
-            </Button>            
+            </Button>
             <Button
               type="button"
               onClick={() => setStep(3)}
-              disabled={!date || !time || isClosedDay} 
-              className="w-2/3 justify-center rounded-sm bg-primary px-6 py-3 font-semibold text-background transition-colors hover:bg-primary-hover">
+              disabled={!date || !time}
+              className="w-2/3 justify-center rounded-sm bg-primary px-6 py-3 font-semibold text-background transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50">
               Continuar a tus datos
             </Button>
           </div>

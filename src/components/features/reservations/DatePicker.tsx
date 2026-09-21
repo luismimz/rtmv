@@ -7,6 +7,7 @@ type DatePickerProps = {
   value: string;
   onChange: (date: string) => void;
   isDateDisabled: (date: string) => boolean;
+  today?: string;
   hasError?: boolean;
 };
 
@@ -53,13 +54,13 @@ function formatSelectedLabel(dateString: string) {
   }).format(parseDateString(dateString));
 }
 
-export function DatePicker({ id, value, onChange, isDateDisabled, hasError }: DatePickerProps) {
+export function DatePicker({ id, value, onChange, isDateDisabled, today: todayValue, hasError }: DatePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [viewedMonth, setViewedMonth] = useState(() =>
-    value ? parseDateString(value) : new Date(),
+    value ? parseDateString(value) : todayValue ? parseDateString(todayValue) : new Date(),
   );
   const containerRef = useRef<HTMLDivElement>(null);
-  const today = new Date();
+  const today = todayValue ? parseDateString(todayValue) : new Date();
   const isViewingCurrentMonth =
     viewedMonth.getFullYear() === today.getFullYear() &&
     viewedMonth.getMonth() === today.getMonth();
